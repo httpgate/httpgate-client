@@ -244,7 +244,8 @@ debug(req.url);
 			}
 		}
 	});
-	headers['Accept-Encoding'] = headers['Accept-Encoding'].replace(',br', '').replace(', br', ''); 
+
+	if(headers['Accept-Encoding']) headers['Accept-Encoding'] = headers['Accept-Encoding'].replace(',br', '').replace(', br', ''); 
 
 	if ('http:' != parsed.protocol) {
 		// only "http://" is supported, "https://" should use CONNECT method
@@ -261,6 +262,7 @@ debug(req.url);
 		realHost = parsed.host.replace('httpgate.','');
 		rurl = rurl.replace(parsed.host, realHost);
 	}
+
 	if(sslSites.has(realHost)) { rurl = 'https.' + rurl;}
 
 	var pr = pRequest(rurl, req.method);
