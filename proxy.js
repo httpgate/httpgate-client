@@ -142,7 +142,7 @@ sslSites.add("google.com");
 sslSites.add("www.google.com");
 
 var blockSites = new Set();
-
+blockSites.add('detectportal.firefox.com');
 /**
  * Hop-by-hop headers must be removed by the proxy before passing it on to the
  * next endpoint. Per-request basis hop-by-hop headers MUST be listed in a
@@ -215,11 +215,17 @@ var agent = new https.Agent({
 
 function onrequest(req, res) {
 debug(req.url);
-	if(req.url.substring(0,1)=='/'){ req.url = 'http://' + req.headers['host']+ req.url ;}
+
+	if(req.url.substring(0,1)=='/') req.url = 'http://' + req.headers['host']+ req.url ;
 	debug.request('%s %s HTTP/%s ', req.method, req.url, req.httpVersion);
-	var server = this;
-	var socket = req.socket;
 	var parsed = url.parse(req.url);
+	if(blockSites.has(parsed.host)) {
+		res.writeHead(400);
+		res.end(parsed.host + ' blocked');
+		return;		
+	}
+
+	var socket = req.socket;
 	//var reqGzip =  req.headers['accept-encoding'] && req.headers['accept-encoding'].toString().includes('gzip') ;
 
 	// proxy the request HTTP method
@@ -229,7 +235,6 @@ debug(req.url);
 	var headers = {};
 	eachHeader(req, function (key, value) {
 		debug.request('Request Header: "%s: %s"', key, value);
-		var keyLower = key.toLowerCase();
 
 		if (isHopByHop.test(key)) {
 			debug.proxyRequest('ignoring hop-by-hop header "%s"', key);
@@ -245,7 +250,7 @@ debug(req.url);
 		}
 	});
 
-	if(headers['Accept-Encoding']) headers['Accept-Encoding'] = headers['Accept-Encoding'].replace(',br', '').replace(', br', ''); 
+    headers['Accept-Encoding'] = "gzip";
 
 	if ('http:' != parsed.protocol) {
 		// only "http://" is supported, "https://" should use CONNECT method
@@ -330,7 +335,11 @@ debug(req.url);
 				if(resGzip){
 					var gzip = zlib.createGzip();
 					var gunzip = zlib.createGunzip();
-					proxyRes.pipe(gunzip).pipe(https2http).pipe(gzip).pipe(res);
+					try{
+						proxyRes.pipe(gunzip).pipe(https2http).pipe(gzip).pipe(res);
+					} catch (error) {
+						res.on('finish', onfinish);
+					}
 				} else {
 					proxyRes.pipe(https2http).pipe(res);
 				}
@@ -422,7 +431,6 @@ function onconnect(req, socket, head) {
 	res.assignSocket(socket);
 	res.writeHead(500);
 	res.end();
-
 }
 
 /**
