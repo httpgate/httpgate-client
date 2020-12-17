@@ -338,8 +338,8 @@ debug(req.url);
 					try{
 						proxyRes.pipe(gunzip).pipe(https2http).pipe(gzip).pipe(res);
 					} catch (error) {
-						res.on('finish', onfinish);
-					}
+						pr.abort();
+						cleanup();					}
 				} else {
 					proxyRes.pipe(https2http).pipe(res);
 				}
